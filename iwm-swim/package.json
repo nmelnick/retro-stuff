@@ -1,0 +1,12 @@
+{
+  "name": "iwm-swim",
+  "description": "Decodes a sigrok exported CSV with headers a0, a1, a2, a3, wr, _dev, _wrreq as IWM/SWIM events",
+  "version": "1.0.0",
+  "main": "decoder.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "fast-csv": "^5.0.1"
+  }
+}
