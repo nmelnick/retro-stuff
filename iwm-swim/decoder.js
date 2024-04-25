@@ -20,6 +20,11 @@ const iwm = {
   stateL7: 0,
   stateL6: 0,
   stateMotor: 0,
+  statePh0: 0,
+  statePh1: 0,
+  statePh2: 0,
+  statePh3: 0,
+  phaseState: function() { return [this.statePh0, this.statePh1, this.statePh2, this.statePh3].join('') },
   state: function() { return [this.stateL7, this.stateL6, this.stateMotor].join('') },
   stateToStateName:{ 
     '000': 'Read All Ones',
@@ -68,9 +73,9 @@ if (!filename) {
   process.exit(1);
 }
 
-console.log('                              /= IWM ================================/= ISM ==========================\\');
-console.log('stamp     time  drv w d r addr function value state                   rm latch register');
-console.log('--------- ----- --- - - - ---- -------- ----- ----------------------- -- ----- -----------------------');
+console.log('                                     /= IWM =================================/= ISM ========================\\');
+console.log('stamp     time  drv wr dv rq 0123MD67 reg function value state                rm reg register');
+console.log('--------- ----- --- -- -- -- -------- --- -------- ----- -------------------- -- --- -----------------------');
 const stream = parse({ headers: false, skipLines: 1 })
   .on('error', error => console.error(error))
   .on('data', (row) => {
@@ -85,23 +90,21 @@ fs.createReadStream(filename)
   .pipe(stream);
 
 function updateStatus(iwmLatch, iwmValue, write, ismLatch, ismReadMode, dev, wrreq) {
-  if (currentDrive == 1) {
-    return;
-  }
   console.log([
     lineNumber.toString().padStart(9, ' '),
     (lineNumber / 16000000).toFixed(2).toString().padStart(5, ' '),
     ` ${currentDrive} `,
-    write || 0,
-    dev || 0,
-    wrreq || 0,
-    iwmLatch.toString().padEnd(5, ' '),
+    write == 1 ? 'W+' : 'w-',
+    dev == 0 ? 'D*' : 'd¯',
+    wrreq == 0 ? 'WR' : 'r¯',
+    (iwm.phaseState() + iwm.stateMotor + currentDrive + iwm.stateL6 + iwm.stateL7),
+    iwmLatch.toString().padEnd(3, ' '),
     iwmLatchToFunction[iwmLatch].padEnd(8),
     iwmValue.toString().padEnd(5, ' '),
     iwm.state(),
     iwm.stateName().padEnd(20, ' '),
     (ismReadMode == 1 ? 'R' : 'W').padEnd(2, ' '),
-    ismLatch.toString().padEnd(5, ' '),
+    ismLatch.toString().padEnd(3, ' '),
     ism.latchToRegister[ismLatch]
   ].join(' '));
 }
@@ -111,16 +114,34 @@ function iwmStateMachine(writeData, dev, wrreq, a0, a1, a2, a3) {
   const address = [a3, a2, a1].join('');
   const latch = parseInt(address, 2);
 
-  if ((dev == 0 && lastDev != 0) || lastWrite != writeData) {
-    if (latch == 5) { // DS
-      currentDrive = iwm.lastValue;
-      return;
-    } else if (latch == 4) { // MO
-      iwm.stateMotor = iwm.lastValue;
-    } else if (latch == 6) { // L6
-      iwm.stateL6 = iwm.lastValue;
-    } else if (latch == 7) { // L7
-      iwm.stateL7 = iwm.lastValue;
+  if ((dev == 0 && lastDev != 0)) {
+    switch (latch) {
+      case 0:
+        iwm.statePh0 = value;
+        break;
+      case 1:
+        iwm.statePh1 = value;
+        break;
+      case 2:
+        iwm.statePh2 = value;
+        break;
+      case 3:
+        iwm.statePh3 = value;
+        break;
+      case 4:
+        iwm.stateMotor = iwm.lastValue;
+        break;
+      case 5:
+        currentDrive = iwm.lastValue;
+        break;
+      case 6:
+        iwm.stateL6 = iwm.lastValue;
+        break;
+      case 7:
+        iwm.stateL7 = iwm.lastValue;
+        break;
+      default:
+        break;
     }
     updateStatus(latch, value, writeData, ism.lastLatch, ism.lastReadMode, dev, wrreq);
   }
