@@ -10,3 +10,7 @@ through my workbench.
   analyzer and provides a log of events and statuses.
 * [pb410-74f151](pb410-74f151/README.md) - KiCad schematic of the components
   connected to the 74F151 on the Packard Bell PB410 motherboard.
+
+## Related
+
+* [cbm-ii](https://github.com/nmelnick/cbm-ii) - Commodore CBM-II / B128 related items have their own repository
